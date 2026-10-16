@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>植物细胞 · 3D 互动课件（低多边形版）</title>
+<style>
+  :root{
+    --bg:#f7f2e8; --card:#fffdf8; --line:#e8dfd0; --ink:#2f2a24; --ink2:#6f6558; --ink3:#a1958a;
+    --green:#7ea75b; --leaf:#4e9a5b; --blue:#4b8fc7; --purple:#7c5ad6; --orange:#e08a4a;
+    --serif:"Noto Serif SC","Songti SC","STSong",Georgia,"Times New Roman",serif;
+    --sans:"Microsoft YaHei UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{font-family:var(--sans);color:var(--ink);background:var(--bg);overflow:hidden;-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;color:inherit;cursor:pointer}
+  .top{height:62px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;
+       background:linear-gradient(180deg,#fffdf9,#faf5ec);border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:11px}
+  .logo{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-size:18px;
+        background:linear-gradient(140deg,#eaf3e2,#e6ecfb);border:1px solid var(--line);color:var(--leaf)}
+  .brand h1{margin:0;font-family:var(--serif);font-size:19px;font-weight:600}
+  .brand p{margin:2px 0 0;font-size:11.5px;color:var(--ink3);font-family:var(--serif);font-style:italic}
+  .badge{font-size:11.5px;padding:5px 10px;border-radius:999px;background:#eef6ea;color:#4a7a34;border:1px solid #d8e9cf}
+  .wrap{height:calc(100% - 62px);display:grid;grid-template-columns:236px minmax(0,1fr) 330px}
+  .col{overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+  .col.l{background:linear-gradient(180deg,#fbf7f0,#f8f2e8);border-right:1px solid var(--line)}
+  .col.r{background:linear-gradient(180deg,#fbf7f0,#f8f2e8);border-left:1px solid var(--line)}
+  .col::-webkit-scrollbar{width:8px}.col::-webkit-scrollbar-thumb{background:#e2d7c6;border-radius:8px}
+  h2.sec{margin:0 0 8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);font-weight:700}
+  .tip{margin:6px 0 0;font-size:11.5px;line-height:1.7;color:var(--ink3)}
+  .item{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px 10px;border-radius:10px;
+        border:1px solid transparent;background:transparent;font-size:13px;transition:.15s}
+  .item:hover{background:#fffdf8;border-color:var(--line)}
+  .item.on{background:#f1ecfd;border-color:#ddd2f8;color:#5f43b5;font-weight:600}
+  .item i{width:9px;height:9px;border-radius:50%;flex:none}
+  .item em{margin-left:auto;font-style:normal;font-size:10px;color:var(--ink3);font-family:var(--serif)}
+  .stage{position:relative;overflow:hidden}
+  #cv{position:absolute;inset:0}
+  #labels{position:absolute;inset:0;pointer-events:none}
+  .lab{position:absolute;transform:translate(-50%,-50%);padding:3px 9px;border-radius:999px;font-size:11.5px;
+       background:rgba(255,253,248,.92);border:1px solid var(--line);box-shadow:0 1px 3px rgba(60,48,30,.08);
+       white-space:nowrap;opacity:0;transition:opacity .2s;pointer-events:auto}
+  .lab.on{opacity:1}
+  .lab.sel{background:var(--purple);color:#fff;border-color:var(--purple);font-weight:600}
+  .head{position:absolute;top:16px;left:18px;pointer-events:none}
+  .head .eyebrow{margin:0 0 3px;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--green);font-weight:700}
+  .head h3{margin:0;font-family:var(--serif);font-size:25px;font-weight:600}
+  .head p{margin:4px 0 0;font-size:11.5px;color:var(--ink3)}
+  .bar{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:6px;padding:6px;
+       border-radius:14px;background:rgba(255,253,248,.9);border:1px solid var(--line);
+       box-shadow:0 6px 20px rgba(60,48,30,.10)}
+  .btn{border:1px solid transparent;background:transparent;border-radius:10px;padding:7px 11px;font-size:12.5px;color:var(--ink2)}
+  .btn:hover{background:#f6f1e8;border-color:var(--line)}
+  .btn.on{background:#f1ecfd;border-color:#ddd2f8;color:#5f43b5;font-weight:600}
+  .hint{position:absolute;bottom:70px;left:50%;transform:translateX(-50%) translateY(6px);padding:7px 14px;
+        border-radius:999px;background:rgba(47,42,36,.88);color:#fff;font-size:12px;opacity:0;transition:.18s;pointer-events:none}
+  .hint.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  .clipwrap{position:absolute;top:16px;right:16px;width:186px;padding:10px;border-radius:12px;
+            background:rgba(255,253,248,.92);border:1px solid var(--line);font-size:11px;color:var(--ink3)}
+  .clipwrap.on .track{background:linear-gradient(90deg,#ded2f8,#cbbcf5)}
+  .track{position:relative;height:6px;border-radius:99px;background:#e8dfd0;margin:8px 2px 4px}
+  .knob{position:absolute;top:50%;left:40%;width:16px;height:16px;margin-left:-8px;transform:translateY(-50%);
+        border-radius:50%;background:#fff;border:2px solid var(--green);cursor:grab}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:14px;
+        box-shadow:0 1px 2px rgba(60,48,30,.05)}
+  .card .ch{display:flex;justify-content:space-between;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+            color:var(--ink3);font-weight:700;margin-bottom:10px}
+  .title{display:flex;align-items:center;gap:11px}
+  .orb{width:44px;height:44px;border-radius:50%;flex:none;
+       background:radial-gradient(circle at 32% 28%,#fff,var(--c) 70%);box-shadow:0 3px 12px rgba(60,48,30,.16)}
+  .title h4{margin:0;font-family:var(--serif);font-size:23px;font-weight:600}
+  .title .en{margin:2px 0 0;font-family:var(--serif);font-style:italic;font-size:12px;color:var(--ink3)}
+  .alias{margin:10px 0 0;font-size:12.5px;color:#5f43b5;background:#f1ecfd;border:1px dashed #ddd2f8;
+         border-radius:9px;padding:6px 10px}
+  .role{margin:9px 0 0;font-size:12.5px;color:var(--ink2);line-height:1.6}
+  .card h5{margin:13px 0 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);font-weight:700}
+  .card p{margin:0;font-size:12.5px;line-height:1.75;color:var(--ink2)}
+  ul.li{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+  ul.li li{position:relative;padding-left:15px;font-size:12.5px;line-height:1.65;color:var(--ink2)}
+  ul.li li:before{content:"";position:absolute;left:2px;top:7px;width:6px;height:6px;border-radius:50%;background:var(--green);opacity:.75}
+  .exam{background:linear-gradient(180deg,#fffdf6,#fdf7ea);border-color:#f0e2c6}
+  ul.li.ex li:before{content:"考";left:0;top:2px;font-size:10px;color:#d99a2b;background:none;font-weight:700}
+  ul.li.ex li{padding-left:18px}
+  .note{background:linear-gradient(180deg,#f8f6ff,#f3f0fe);border-color:#e3dcf8}
+  .fps{position:absolute;top:16px;right:216px;font-size:11px;color:var(--ink3)}
+  @media (max-width:1100px){ .wrap{grid-template-columns:200px minmax(0,1fr) 280px} .head h3{font-size:20px} }
+  @media (max-width:860px){ body{overflow:auto} .wrap{grid-template-columns:1fr;height:auto} .stage{height:64vh}
+    .col.l,.col.r{border:none;border-top:1px solid var(--line)} }
+</style>
+</head><body>
+<div class="top">
+  <div class="brand">
+    <div class="logo">✿</div>
+    <div>
+      <h1>Cell Architecture Studio</h1>
+      <p>植物细胞 · 低多边形 3D 互动课件</p>
+    </div>
+  </div>
+  <div class="badge">离线可用 · 双击即开</div>
+</div>
+
+<div class="wrap">
+  <aside class="col l">
+    <section>
+      <h2 class="sec">细胞结构</h2>
+      <div id="list"></div>
+      <p class="tip">点结构名，或直接点 3D 模型。</p>
+    </section>
+    <section>
+      <h2 class="sec">快捷键</h2>
+      <p class="tip"><b>R</b> 复位视角 · <b>L</b> 标注 · <b>S</b> 截图 · <b>Esc</b> 取消选中</p>
+    </section>
+  </aside>
+
+  <section class="stage">
+    <canvas id="cv"></canvas>
+    <div id="labels"></div>
+    <div class="head">
+      <p class="eyebrow">交互式学习工作台</p>
+      <h3 id="title">植物细胞 Plant Cell</h3>
+      <p id="sub">拖动旋转 · 滚轮缩放 · 点击结构查看知识点</p>
+    </div>
+    <div class="fps" id="fps"></div>
+    <div class="clipwrap" id="clipwrap">
+      <div>剖面观察（已默认切开）</div>
+      <div class="track" id="track"><div class="knob" id="knob"></div></div>
+      <div style="margin-top:6px">双击滑块恢复完整细胞</div>
+    </div>
+    <div class="hint" id="hint"></div>
+    <div class="bar">
+      <button class="btn" id="b-spin">自动旋转</button>
+      <button class="btn on" id="b-lab">标注</button>
+      <button class="btn" id="b-zoom">放大观察</button>
+      <button class="btn" id="b-reset">复位视角</button>
+      <button class="btn" id="b-shot">截图</button>
+    </div>
+  </section>
+
+  <aside class="col r">
+    <div id="panel"></div>
+  </aside>
+</div>
+
+<script src="./libs/three.min.js"></script>
+<script>/* ============================================================
+ *  低多边形植物细胞 · 单文件交互课件
+ *  依赖：./libs/three.min.js（本地化，断网可用）
+ *  改知识点：编辑 DATA     改配色：编辑 PALETTE
+ * ============================================================ */
+var PALETTE = {
+  bg:'#f7f2e8', wall:'#7ea75b', membrane:'#e8a2a0', cytosol:'#f6efdf',
+  vacuole:'#4b8fc7', nucleus:'#7c5ad6', chloro:'#4e9a5b', mito:'#e08a4a',
+  golgi:'#d0719b', er:'#b58ad8', ribo:'#c9a25e'
+};
+
+var DATA = [
+ { id:'wall', name:'细胞壁', en:'Cell Wall', alias:'植物细胞的铠甲', color:PALETTE.wall, off:[-0.4,2.35,0],
+   role:'支持和保护细胞，使细胞有比较固定的形状',
+   func:'主要成分是纤维素和果胶，对植物细胞起支持和保护作用。',
+   points:['不是膜，具有全透性，各种物质都能通过','与细胞膜共同维持细胞形态','相邻细胞的细胞壁间有胞间连丝'],
+   exam:['常考：细胞壁全透性，不具选择透过性','原核细胞细胞壁成分是肽聚糖，与植物不同','质壁分离时水分可自由通过细胞壁'],
+   note:'像给细胞穿了一件硬壳外套：什么都挡不住，但能撑住形状。' },
+ { id:'membrane', name:'细胞膜', en:'Cell Membrane', alias:'细胞的边防检查站', color:PALETTE.membrane, off:[-2.05,0.55,1.6],
+   role:'控制物质进出，进行细胞间信息交流',
+   func:'将细胞与外界环境分隔开，保持内部环境相对稳定；控制物质进出；进行细胞间信息交流。',
+   points:['结构特点：具有一定的流动性','功能特点：选择透过性','糖蛋白在膜外侧，与细胞识别有关'],
+   exam:['易错：流动性是结构特点，选择透过性是功能特点','膜上蛋白质种类数量越多，功能越复杂'],
+   note:'磷脂双分子层是地基，蛋白质是门窗和门卫，糖蛋白是身份证。' },
+ { id:'cytosol', name:'细胞质基质', en:'Cytosol', alias:'流动的车间', color:PALETTE.cytosol, off:[-1.9,-0.9,1.2],
+   role:'新陈代谢的主要场所',
+   func:'含水、无机盐、脂质、糖类、氨基酸、核苷酸和多种酶，为细胞器提供物质和环境。',
+   points:['细胞质 = 细胞质基质 + 细胞器','有氧呼吸第一阶段在此进行','无氧呼吸全过程也在此进行'],
+   exam:['常考：葡萄糖分解为丙酮酸发生在细胞质基质'],
+   note:'细胞里的营养液和工人（酶），很多反应在这里发生。' },
+ { id:'nucleus', name:'细胞核', en:'Nucleus', alias:'细胞司令部', color:PALETTE.nucleus,
+   role:'遗传信息库，代谢和遗传的控制中心',
+   func:'遗传物质 DNA 储存和复制的主要场所，是细胞代谢和遗传的控制中心。',
+   points:['核膜是双层膜，核孔是大分子进出通道','核仁与核糖体的形成有关','染色质 = DNA + 蛋白质，分裂期成为染色体'],
+   exam:['易错：DNA 一般不出核，出核的是 mRNA','常考：染色质与染色体是同一物质的两种形态'],
+   note:'图纸（DNA）留在司令部，命令（mRNA）从核孔发出去。' },
+ { id:'vacuole', name:'液泡', en:'Vacuole', alias:'细胞里的大水袋', color:PALETTE.vacuole,
+   role:'贮存物质、调节内环境、维持细胞坚挺',
+   func:'贮存糖类、无机盐、色素、蛋白质等，调节植物细胞内的环境，使细胞保持坚挺。',
+   points:['成熟植物细胞常有一个大液泡','原生质层 = 细胞膜 + 液泡膜 + 两层膜之间的细胞质','花青素使花瓣呈现红紫颜色'],
+   exam:['常考：质壁分离实验选紫色洋葱外表皮，便于观察','易错：原生质层不包括液泡内的细胞液'],
+   note:'大液泡充满水，像给细胞打足气的气球，撑得茎叶挺拔。' },
+ { id:'chloroplast', name:'叶绿体', en:'Chloroplast', alias:'养料制造车间', color:PALETTE.chloro,
+   role:'光合作用的场所',
+   func:'把光能转变成化学能，储存在所合成的有机物中。',
+   points:['类囊体薄膜上有色素和光反应所需的酶','叶绿体基质含暗反应所需的酶','类囊体堆叠成基粒，增大膜面积'],
+   exam:['常考：光反应在类囊体薄膜，暗反应在叶绿体基质','常考：根尖细胞无叶绿体，不能光合作用'],
+   note:'一叠叠硬币（基粒）负责抓光，基质负责组装有机物。' },
+ { id:'mitochondria', name:'线粒体', en:'Mitochondrion', alias:'动力车间', color:PALETTE.mito,
+   role:'有氧呼吸的主要场所',
+   func:'把有机物中的化学能释放出来，合成 ATP，为生命活动提供能量。',
+   points:['内膜向内折叠成嵴，增大酶附着面积','有氧呼吸第二、三阶段在此进行','含少量 DNA 和核糖体'],
+   exam:['常考：第二阶段在线粒体基质，第三阶段在内膜','常考：代谢旺盛的细胞线粒体更多'],
+   note:'葡萄糖先被拆成丙酮酸，进入这里被彻底氧化，能量装进 ATP。' },
+ { id:'golgi', name:'高尔基体', en:'Golgi Apparatus', alias:'快递分拣中心', color:PALETTE.golgi,
+   role:'对蛋白质加工、分类、包装和发送',
+   func:'对来自内质网的蛋白质进一步加工、分类、包装和发送；在植物细胞中与细胞壁形成有关。',
+   points:['是分泌蛋白的最后一道加工工序','植物中与细胞壁形成有关','通过囊泡与细胞膜融合排出物质'],
+   exam:['常考：植物细胞中与细胞壁形成有关，动物细胞中与分泌物形成有关'],
+   note:'按标签把蛋白质打包，贴上地址寄出去。' },
+ { id:'er', name:'内质网', en:'Endoplasmic Reticulum', alias:'加工车间与运输通道', color:PALETTE.er,
+   role:'蛋白质和脂质的合成、加工与运输',
+   func:'粗面内质网加工核糖体合成的蛋白质；滑面内质网合成脂质。',
+   points:['是细胞内膜面积最大的细胞器','分泌蛋白路径：核糖体→内质网→高尔基体→细胞膜','与核膜、细胞膜相连'],
+   exam:['常考：分泌蛋白的合成与运输路径，由线粒体供能'],
+   note:'像高速公路网，一边收原料，一边把半成品送往下游。' },
+ { id:'ribosome', name:'核糖体', en:'Ribosome', alias:'生产蛋白质的机器', color:PALETTE.ribo,
+   role:'蛋白质合成的场所',
+   func:'以 mRNA 为模板，把氨基酸连接成多肽链。',
+   points:['无膜结构，是最小的细胞器之一','游离核糖体合成胞内蛋白，附着核糖体合成分泌蛋白','原核细胞唯一的细胞器'],
+   exam:['常考：核糖体、中心体都是无膜结构','常考：核仁与核糖体的形成有关'],
+   note:'一台翻译机：读着 mRNA 的密码子，把氨基酸串成蛋白质。' }
+];
+function byId(id){ for (var i=0;i<DATA.length;i++) if (DATA[i].id===id) return DATA[i]; return null; }
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; var t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+var rnd = mulberry32(20261016);
+function lerp(a,b,t){ return a+(b-a)*t; }
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function superBox(a,b,c,e,su,sv){
+  var g = new THREE.SphereGeometry(1, su||20, sv||14);
+  var p = g.attributes.position;
+  for (var i=0;i<p.count;i++){
+    var x=p.getX(i), y=p.getY(i), z=p.getZ(i);
+    p.setXYZ(i, Math.sign(x)*Math.pow(Math.abs(x),e)*a, Math.sign(y)*Math.pow(Math.abs(y),e)*b, Math.sign(z)*Math.pow(Math.abs(z),e)*c);
+  }
+  p.needsUpdate = true; g.computeVertexNormals(); return g;
+}
+/* 挖掉一角：低多边形"切开的教学盒子"效果（实心盒子 + 缺口） */
+function cutCorner(geo, cutX, cutZ){
+  var idx = geo.index.array, keep = [];
+  var pos = geo.attributes.position;
+  for (var i=0;i<idx.length;i+=3){
+    var a=idx[i], b=idx[i+1], d=idx[i+2];
+    var cx=(pos.getX(a)+pos.getX(b)+pos.getX(d))/3;
+    var cz=(pos.getZ(a)+pos.getZ(b)+pos.getZ(d))/3;
+    if (cx > cutX && cz > cutZ) continue;
+    keep.push(a,b,d);
+  }
+  geo.setIndex(keep);
+  geo.computeVertexNormals();
+  return geo;
+}/* ---------------- 渲染器 / 场景 / 光照 ---------------- */
+var canvas = document.getElementById('cv');
+var stage = document.querySelector('.stage');
+var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.97;
+renderer.localClippingEnabled = true;
+/* 颜色管理：让十六进制颜色按 sRGB 正确解释（否则画面会整体发白） */
+if (THREE.ColorManagement){
+  if ('legacyMode' in THREE.ColorManagement) THREE.ColorManagement.legacyMode = false;
+  if ('enabled' in THREE.ColorManagement) THREE.ColorManagement.enabled = true;
+}
+
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(PALETTE.bg);
+var camera = new THREE.PerspectiveCamera(36, 1, 0.1, 200);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0xe4d9c6, 0.55));
+var key = new THREE.DirectionalLight(0xfff6e6, 1.25); key.position.set(5,7,6); scene.add(key);
+var fill = new THREE.DirectionalLight(0xdce8ff, 0.32); fill.position.set(-6,2,-4); scene.add(fill);
+var rim = new THREE.DirectionalLight(0xffe9c9, 0.5); rim.position.set(-2,-5,4); scene.add(rim);
+
+function solidMat(hex, opt){
+  opt = opt || {};
+  return new THREE.MeshStandardMaterial({ color:new THREE.Color(hex), flatShading:true,
+    roughness: opt.rough==null?0.62:opt.rough, metalness:0.0 });
+}
+function shellMat(hex, opacity, rough){
+  return new THREE.MeshStandardMaterial({ color:new THREE.Color(hex), flatShading:true,
+    roughness: rough==null?0.45:rough, metalness:0.0, transparent:true, opacity:opacity,
+    side: THREE.DoubleSide });
+}
+
+var clipX = new THREE.Plane(new THREE.Vector3(-1,0,0), 0.55);
+var clipZ = new THREE.Plane(new THREE.Vector3(0,0,-1), 0.55);
+var clippedMats = [];
+function clipped(mat){ mat.clippingPlanes = [clipX, clipZ]; mat.clipShadows = true; clippedMats.push(mat); return mat; }
+
+var CELL = {
+  wall:{a:2.30,b:1.72,c:1.72,e:0.44},
+  membrane:{a:2.16,b:1.59,c:1.59,e:0.44},
+  cytosol:{a:2.08,b:1.52,c:1.52,e:0.46},
+  vacuole:{x:0.22,a:1.22,b:0.92,c:0.92,e:0.52},
+  nucleus:{x:-1.42,y:0.12,z:0.28,r:0.42}
+};
+var root = new THREE.Group(); scene.add(root);
+var parts = {};
+function newPart(id){ var g = new THREE.Group(); g.name=id; g.userData.organelle=id; parts[id]=g; root.add(g); return g; }
+
+/* 细胞壁 */
+(function(){
+  var mat = clipped(new THREE.MeshStandardMaterial({ color:new THREE.Color(PALETTE.wall), flatShading:true,
+    roughness:0.52, metalness:0.0, side:THREE.DoubleSide }));
+  var m = new THREE.Mesh(superBox(CELL.wall.a,CELL.wall.b,CELL.wall.c,CELL.wall.e,26,18), mat);
+  m.userData.pick='wall'; newPart('wall').add(m);
+})();
+/* 细胞膜 */
+(function(){
+  var mat = clipped(new THREE.MeshStandardMaterial({ color:new THREE.Color(PALETTE.membrane), flatShading:true,
+    roughness:0.5, metalness:0.0, transparent:true, opacity:0.86, side:THREE.DoubleSide }));
+  var m = new THREE.Mesh(superBox(CELL.membrane.a,CELL.membrane.b,CELL.membrane.c,CELL.membrane.e,24,16), mat);
+  m.userData.pick='membrane'; newPart('membrane').add(m);
+})();
+/* 细胞质基质 */
+(function(){
+  var m = new THREE.Mesh(superBox(CELL.cytosol.a,CELL.cytosol.b,CELL.cytosol.c,CELL.cytosol.e,20,14), clipped(shellMat(PALETTE.cytosol,0.05,0.85)));
+  m.userData.pick='cytosol'; newPart('cytosol').add(m);
+})();
+/* 液泡 */
+(function(){
+  var g = newPart('vacuole');
+  var m = new THREE.Mesh(superBox(CELL.vacuole.a,CELL.vacuole.b,CELL.vacuole.c,CELL.vacuole.e,22,16), shellMat(PALETTE.vacuole,0.92,0.25));
+  m.userData.pick='vacuole'; g.add(m);
+  g.position.set(CELL.vacuole.x,0,0);
+})();
+/* 细胞核 */
+(function(){
+  var g = newPart('nucleus'); var R = CELL.nucleus.r;
+  var core = new THREE.Mesh(new THREE.IcosahedronGeometry(R,2), solidMat(PALETTE.nucleus,{rough:0.42}));
+  core.userData.pick='nucleus'; g.add(core);
+  var nu = new THREE.Mesh(new THREE.IcosahedronGeometry(R*0.34,1), solidMat('#4a2f9e',{rough:0.5}));
+  nu.position.set(R*0.3,R*0.18,R*0.12); g.add(nu);
+  var sh = new THREE.Mesh(superBox(R*1.16,R*1.16,R*1.16,0.85,18,12), shellMat('#b9a4f0',0.30,0.3));
+  sh.userData.pick='nucleus'; g.add(sh);
+  g.position.set(CELL.nucleus.x, CELL.nucleus.y, CELL.nucleus.z);
+})();
+
+/* 在细胞质外壳撒点（避开液泡与细胞核） */
+function shellPoints(count, opts){
+  var a=opts.a,b=opts.b,c=opts.c,e=opts.e||0.44,inset=opts.inset||0.84,minD=opts.minD||0.5;
+  var n=1/e, out=[], tries=0;
+  var NC = new THREE.Vector3(CELL.nucleus.x,CELL.nucleus.y,CELL.nucleus.z);
+  while(out.length<count && tries<4000){
+    tries++;
+    var u=rnd()*2-1, phi=rnd()*Math.PI*2, r=Math.sqrt(Math.max(0,1-u*u));
+    var d=new THREE.Vector3(r*Math.cos(phi),u,r*Math.sin(phi));
+    var v=Math.pow(Math.abs(d.x/a),n)+Math.pow(Math.abs(d.y/b),n)+Math.pow(Math.abs(d.z/c),n);
+    var p=d.multiplyScalar(Math.pow(v,-1/n)*inset);
+    var dx=(p.x-CELL.vacuole.x)/(CELL.vacuole.a*1.06), dy=p.y/(CELL.vacuole.b*1.06), dz=p.z/(CELL.vacuole.c*1.06);
+    if (dx*dx+dy*dy+dz*dz < 1) continue;
+    if (p.distanceTo(NC) < CELL.nucleus.r*1.25) continue;
+    var ok=true; for (var i=0;i<out.length;i++){ if (out[i].distanceTo(p)<minD){ ok=false; break; } }
+    if (!ok) continue;
+    out.push(p);
+  }
+  return out;
+}
+
+/* 叶绿体 */
+function buildChloroplast(){
+  var g = new THREE.Group(); var s = 0.44 + rnd()*0.10;
+  var outer = new THREE.Mesh(new THREE.IcosahedronGeometry(1,1), shellMat(PALETTE.chloro,0.88,0.45));
+  outer.scale.set(s*1.5, s*0.8, s*1.05); g.add(outer);
+  var stackMat = solidMat('#2f7a3a',{rough:0.5});
+  var dg = new THREE.CylinderGeometry(0.055,0.055,0.012,8);
+  for (var i=0;i<4;i++){
+    var st = new THREE.Group();
+    for (var j=0;j<4;j++){ var d=new THREE.Mesh(dg,stackMat); d.position.y=j*0.018; st.add(d); }
+    st.position.set((rnd()-0.5)*s*1.2,(rnd()-0.5)*s*0.5,(rnd()-0.5)*s*0.8);
+    st.rotation.set(rnd()*3,rnd()*3,rnd()*3); g.add(st);
+  }
+  return g;
+}
+(function(){
+  var g = newPart('chloroplast');
+  var pts = shellPoints(7,{a:CELL.membrane.a,b:CELL.membrane.b,c:CELL.membrane.c,e:CELL.membrane.e,inset:0.84,minD:0.72});
+  for (var i=0;i<pts.length;i++){
+    var cp = buildChloroplast(); cp.position.copy(pts[i]); cp.lookAt(0,0,0); cp.rotateY(rnd()*6.28);
+    cp.traverse(function(o){ if(o.isMesh) o.userData.pick='chloroplast'; });
+    g.add(cp);
+  }
+})();
+/* 线粒体 */
+function buildMito(){
+  var g = new THREE.Group(); var R = 0.175+rnd()*0.05, L = 0.36+rnd()*0.16;
+  g.add(new THREE.Mesh(new THREE.CapsuleGeometry(R,L,6,12), shellMat(PALETTE.mito,0.92,0.5)));
+  g.add(new THREE.Mesh(new THREE.CapsuleGeometry(R*0.6,L*0.9,4,10), solidMat('#c9622a',{rough:0.55})));
+  return g;
+}
+(function(){
+  var g = newPart('mitochondria');
+  var pts = shellPoints(5,{a:CELL.membrane.a,b:CELL.membrane.b,c:CELL.membrane.c,e:CELL.membrane.e,inset:0.80,minD:0.90});
+  for (var i=0;i<pts.length;i++){
+    var mt = buildMito(); mt.position.copy(pts[i]); mt.lookAt(0,0,0); mt.rotateY(rnd()*6.28);
+    mt.traverse(function(o){ if(o.isMesh) o.userData.pick='mitochondria'; });
+    g.add(mt);
+  }
+})();
+/* 高尔基体 */
+(function(){
+  var g = newPart('golgi');
+  var pts = shellPoints(2,{a:CELL.membrane.a,b:CELL.membrane.b,c:CELL.membrane.c,e:CELL.membrane.e,inset:0.78,minD:1.5});
+  for (var k=0;k<pts.length;k++){
+    var st = new THREE.Group();
+    for (var i=0;i<5;i++){
+      var kk = 1-i*0.13;
+      var cis = new THREE.Mesh(new THREE.CylinderGeometry(0.30*kk,0.30*kk,0.05,10), solidMat(PALETTE.golgi,{rough:0.45}));
+      cis.position.y=i*0.085; cis.rotation.z=(rnd()-0.5)*0.2; st.add(cis);
+    }
+    st.position.copy(pts[k]); st.lookAt(0,0,0); st.rotateY(rnd()*6.28);
+    st.traverse(function(o){ if(o.isMesh) o.userData.pick='golgi'; });
+    g.add(st);
+  }
+})();
+/* 内质网 */
+(function(){
+  var g = newPart('er');
+  var pts = shellPoints(3,{a:CELL.membrane.a,b:CELL.membrane.b,c:CELL.membrane.c,e:CELL.membrane.e,inset:0.80,minD:1.2});
+  for (var k=0;k<pts.length;k++){
+    var cp=[], base=pts[k];
+    for (var j=0;j<6;j++) cp.push(new THREE.Vector3(base.x+(rnd()-0.5)*0.5, base.y+(rnd()-0.5)*0.5, base.z+(rnd()-0.5)*0.5));
+    var tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(cp),24,0.05,6,false), solidMat(PALETTE.er,{rough:0.5}));
+    tube.userData.pick='er'; tube.scale.set(1,0.55,1); g.add(tube);
+  }
+})();
+/* 核糖体 */
+(function(){
+  var g = newPart('ribosome');
+  var pts = shellPoints(90,{a:CELL.cytosol.a,b:CELL.cytosol.b,c:CELL.cytosol.c,e:CELL.cytosol.e,inset:0.90,minD:0});
+  var inst = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.032,0), solidMat(PALETTE.ribo,{rough:0.6}), pts.length);
+  inst.userData.pick='ribosome';
+  var m4 = new THREE.Matrix4();
+  for (var i=0;i<pts.length;i++){ m4.makeTranslation(pts[i].x,pts[i].y,pts[i].z); inst.setMatrixAt(i,m4); }
+  g.add(inst);
+})();
+/* 微缩底座 */
+(function(){
+  var base = new THREE.Mesh(new THREE.CylinderGeometry(3.1,3.22,0.24,44),
+    new THREE.MeshStandardMaterial({ color:new THREE.Color('#e7ddca'), flatShading:true, roughness:0.9, metalness:0 }));
+  base.position.y = -1.92; scene.add(base);
+})();
+/* 柔和接触阴影 */
+(function(){
+  var cv = document.createElement('canvas'); cv.width=cv.height=256;
+  var ctx = cv.getContext('2d');
+  var grd = ctx.createRadialGradient(128,128,10,128,128,124);
+  grd.addColorStop(0,'rgba(120,105,85,0.32)'); grd.addColorStop(1,'rgba(120,105,85,0)');
+  ctx.fillStyle=grd; ctx.fillRect(0,0,256,256);
+  var plane = new THREE.Mesh(new THREE.PlaneGeometry(9,9),
+    new THREE.MeshBasicMaterial({ map:new THREE.CanvasTexture(cv), transparent:true, depthWrite:false }));
+  plane.rotation.x = -Math.PI/2; plane.position.y = -1.78; scene.add(plane);
+})();/* ---------------- 相机（自带阻尼的轨道控制） ---------------- */
+var view = { theta: 0.82, phi: 0.98, dist: 10.4 };
+var goal = { theta: view.theta, phi: view.phi, dist: view.dist, target: new THREE.Vector3(0,0.15,0) };
+var camTarget = new THREE.Vector3(0,0,0);
+function applyCamera(){
+  var sp = Math.sin(goal.phi), cp = Math.cos(goal.phi);
+  camera.position.set(
+    camTarget.x + goal.dist*sp*Math.sin(goal.theta),
+    camTarget.y + goal.dist*cp,
+    camTarget.z + goal.dist*sp*Math.cos(goal.theta));
+  camera.lookAt(camTarget);
+}
+function updateCamera(dt){
+  var k = 1 - Math.exp(-4.5*dt);
+  view.theta = lerp(view.theta, goal.theta, k);
+  view.phi   = lerp(view.phi,   goal.phi,   k);
+  view.dist  = lerp(view.dist,  goal.dist,  k);
+  camTarget.lerp(goal.target, k);
+  applyCamera();
+}
+applyCamera();
+
+var dragging=false, lastX=0, lastY=0, moved=0, pointers={}, pinchDist=0;
+canvas.addEventListener('pointerdown', function(e){
+  canvas.setPointerCapture(e.pointerId);
+  pointers[e.pointerId]={x:e.clientX,y:e.clientY};
+  dragging=true; moved=0; lastX=e.clientX; lastY=e.clientY;
+});
+canvas.addEventListener('pointermove', function(e){
+  if (pointers[e.pointerId]) pointers[e.pointerId]={x:e.clientX,y:e.clientY};
+  var keys=Object.keys(pointers);
+  if (dragging && keys.length===1){
+    var dx=e.clientX-lastX, dy=e.clientY-lastY;
+    moved += Math.abs(dx)+Math.abs(dy);
+    goal.theta -= dx*0.008;
+    goal.phi = clamp(goal.phi - dy*0.007, 0.28, Math.PI-0.34);
+    lastX=e.clientX; lastY=e.clientY;
+  } else if (keys.length===2){
+    var a=pointers[keys[0]], b=pointers[keys[1]];
+    var d=Math.hypot(a.x-b.x, a.y-b.y);
+    if (pinchDist>0) goal.dist = clamp(goal.dist*(pinchDist/d), 3.4, 16);
+    pinchDist = d;
+  }
+  hoverAt(e.clientX, e.clientY);
+});
+function endPointer(e){ if(pointers[e.pointerId]) delete pointers[e.pointerId]; if(Object.keys(pointers).length===0){ dragging=false; pinchDist=0; } }
+canvas.addEventListener('pointerup', function(e){
+  var wasDrag = moved>8;
+  endPointer(e);
+  if (!wasDrag){ var hit = pickAt(e.clientX,e.clientY,true) || pickAt(e.clientX,e.clientY,false); if (hit) select(hit); }
+});
+canvas.addEventListener('pointercancel', endPointer);
+canvas.addEventListener('wheel', function(e){
+  e.preventDefault();
+  goal.dist = clamp(goal.dist*(1 + e.deltaY*0.0012), 3.4, 16);
+}, { passive:false });
+window.addEventListener('resize', resize);
+
+/* ---------------- 拾取 ---------------- */
+var ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function pickAt(cx, cy, solidOnly){
+  var r = canvas.getBoundingClientRect();
+  ndc.set(((cx-r.left)/r.width)*2-1, -((cy-r.top)/r.height)*2+1);
+  ray.setFromCamera(ndc, camera);
+  var hits = ray.intersectObjects(root.children, true);
+  for (var i=0;i<hits.length;i++){
+    var o = hits[i].object;
+    if (!o.visible) continue;
+    var pick = o.userData.pick;
+    if (!pick) continue;
+    var isShell = (pick==='wall' || pick==='membrane' || pick==='cytosol');
+    if (solidOnly && isShell) continue;
+    if (!solidOnly && pick==='cytosol') continue;
+    return pick;
+  }
+  return null;
+}
+var hovered=null;
+function hoverAt(cx, cy){
+  if (dragging) return;
+  var id = pickAt(cx,cy,true) || pickAt(cx,cy,false);
+  if (id===hovered) return;
+  hovered = id;
+  canvas.style.cursor = id ? 'pointer' : 'grab';
+  var hint = document.getElementById('hint');
+  if (id){ var d=byId(id); hint.innerHTML='<b>'+d.name+'</b> · '+d.en+' &nbsp;点击查看知识点'; hint.classList.add('on'); }
+  else hint.classList.remove('on');
+}
+
+/* ---------------- 选中 / 高亮 ---------------- */
+var selected=null, isolate=false, labelsOn=true;
+function setDim(group, dim){
+  group.traverse(function(o){
+    if (!o.isMesh) return;
+    var mats = Array.isArray(o.material)? o.material : [o.material];
+    for (var i=0;i<mats.length;i++){
+      var m = mats[i]; if (!m.isMeshStandardMaterial) continue;
+      if (m.userData.o0===undefined){ m.userData.o0=m.opacity; m.userData.t0=m.transparent; m.userData.c0=m.color.getHex(); m.userData.e0=m.emissive.getHex(); }
+      if (dim){
+        var col = new THREE.Color(m.userData.c0); col.multiplyScalar(0.52);
+        m.color.copy(col);
+        m.opacity = m.userData.o0; m.transparent = m.userData.t0;
+      } else {
+        m.color.setHex(m.userData.c0);
+        m.opacity = m.userData.o0; m.transparent = m.userData.t0;
+      }
+      m.needsUpdate = true;
+    }
+  });
+}
+function setGlow(group, on){
+  group.traverse(function(o){
+    if (!o.isMesh) return;
+    var mats = Array.isArray(o.material)? o.material : [o.material];
+    for (var i=0;i<mats.length;i++){
+      var m = mats[i]; if (!m.emissive) continue;
+      if (m.userData.e0===undefined) m.userData.e0 = m.emissive.getHex();
+      if (on){ m.emissive.setHex(0xffcf6e); m.emissiveIntensity = 0.6; }
+      else { m.emissive.setHex(m.userData.e0); m.emissiveIntensity = 1; }
+    }
+  });
+}
+function focus(id){
+  var g = parts[id]; if (!g) return { center:new THREE.Vector3(), radius:0.6 };
+  var best = g, kids = g.children;
+  if (kids.length > 1){
+    var bd = 1e9;
+    for (var i=0;i<kids.length;i++){
+      var c = new THREE.Box3().setFromObject(kids[i]).getCenter(new THREE.Vector3());
+      var d = c.distanceTo(camera.position);
+      if (d<bd){ bd=d; best=kids[i]; }
+    }
+  }
+  var sph = new THREE.Box3().setFromObject(best).getBoundingSphere(new THREE.Sphere());
+  return { center: sph.center.clone(), radius: clamp(sph.radius,0.25,3.2) };
+}
+function select(id, noFly){
+  if (!parts[id]) return;
+  if (selected && parts[selected]){ setGlow(parts[selected],false); parts[selected].scale.setScalar(1); }
+  selected = id;
+  setGlow(parts[id], true);
+  parts[id].scale.setScalar(1.06);
+  var info = focus(id);
+  if (isolate){ for (var k in parts) parts[k].visible = (k===id); }
+  else { for (var k2 in parts) setDim(parts[k2], k2!==id); }
+  if (!noFly){ goal.target.copy(info.center); goal.dist = clamp(info.radius*5.4+2.6, 5.2, 14); }
+  renderPanel(byId(id)); renderList(); updateHead(); syncLabels();
+}/* ---------------- 列表 / 详情面板 ---------------- */
+function renderList(){
+  var html = '';
+  for (var i=0;i<DATA.length;i++){
+    var d = DATA[i];
+    html += '<button class="item'+(d.id===selected?' on':'')+'" data-id="'+d.id+'">'
+          + '<i style="background:'+d.color+'"></i><span>'+d.name+'</span><em>'+d.en.split(' ')[0]+'</em></button>';
+  }
+  var host = document.getElementById('list');
+  host.innerHTML = html;
+  var btns = host.querySelectorAll('.item');
+  for (var j=0;j<btns.length;j++){
+    btns[j].onclick = (function(el){ return function(){ select(el.getAttribute('data-id')); }; })(btns[j]);
+  }
+}
+function ulLi(arr, cls){
+  var s = '<ul class="li '+(cls||'')+'">';
+  for (var i=0;i<arr.length;i++) s += '<li>'+arr[i]+'</li>';
+  return s + '</ul>';
+}
+function renderPanel(d){
+  var host = document.getElementById('panel');
+  if (!d){ host.innerHTML = '<div class="card"><div class="ch"><span>结构详情</span></div><p>点击左侧结构名，或直接点击 3D 模型中的任意结构，这里会显示它的功能、要点与考点。</p></div>'; return; }
+  host.innerHTML =
+    '<div class="card"><div class="ch"><span>结构详情</span><span>★</span></div>'
+    + '<div class="title"><div class="orb" style="--c:'+d.color+'"></div><div><h4>'+d.name+'</h4><p class="en">'+d.en+'</p></div></div>'
+    + '<p class="alias">「'+d.alias+'」</p><p class="role">'+d.role+'</p></div>'
+    + '<div class="card"><div class="ch"><span>功能</span></div><p>'+d.func+'</p><h5>要点</h5>'+ulLi(d.points)+'</div>'
+    + '<div class="card exam"><div class="ch"><span>考点提示</span></div>'+ulLi(d.exam,'ex')+'</div>'
+    + '<div class="card note"><div class="ch"><span>记忆笔记</span></div><p>'+d.note+'</p></div>';
+}
+function updateHead(){
+  var t = document.getElementById('title'), s = document.getElementById('sub');
+  if (selected){ var d = byId(selected); t.textContent = d.name + ' ' + d.en; s.textContent = d.role; }
+  else { t.textContent = '植物细胞 Plant Cell'; s.textContent = '拖动旋转 · 滚轮缩放 · 点击结构查看知识点'; }
+}
+
+/* ---------------- 标注（HTML 投影） ---------------- */
+var labelHost = document.getElementById('labels'), labels = {};
+for (var li=0; li<DATA.length; li++){
+  (function(d){
+    var el = document.createElement('button');
+    el.className = 'lab'; el.type = 'button';
+    el.innerHTML = '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+d.color+';margin-right:5px"></span>'+d.name;
+    el.onclick = function(ev){ ev.stopPropagation(); select(d.id); };
+    labelHost.appendChild(el);
+    labels[d.id] = { el: el };
+  })(DATA[li]);
+}
+function syncLabels(){
+  for (var id in labels){
+    labels[id].el.classList.toggle('on', labelsOn || id===selected);
+    labels[id].el.classList.toggle('sel', id===selected);
+  }
+}
+function updateLabels(){
+  var w = stage.clientWidth, h = stage.clientHeight;
+  for (var id in labels){
+    var L = labels[id];
+    var visible = (labelsOn || id===selected) && parts[id] && parts[id].visible;
+    if (!visible){ L.el.style.opacity = 0; continue; }
+    var info = focus(id);
+    var d0 = byId(id);
+    var off = (d0 && d0.off) ? new THREE.Vector3(d0.off[0], d0.off[1], d0.off[2])
+                             : new THREE.Vector3(0, info.radius*0.95+0.08, 0);
+    var p = info.center.clone().add(off);
+    p.project(camera);
+    if (p.z > 1){ L.el.style.opacity = 0; continue; }
+    L.el.style.left = ((p.x*0.5+0.5)*w)+'px';
+    L.el.style.top  = ((-p.y*0.5+0.5)*h)+'px';
+    L.el.style.opacity = 1;
+  }
+}
+
+/* ---------------- 剖面 ---------------- */
+function setClip(on){
+  for (var i=0;i<clippedMats.length;i++){
+    clippedMats[i].clippingPlanes = on ? [clipX, clipZ] : [];
+    clippedMats[i].needsUpdate = true;
+  }
+  document.getElementById('clipwrap').classList.toggle('on', on);
+}
+(function initClip(){
+  var track = document.getElementById('track'), knob = document.getElementById('knob');
+  var drag=false;
+  function setFrom(e){
+    var r = track.getBoundingClientRect();
+    var x = clamp((e.clientX-r.left)/r.width, 0, 1);
+    knob.style.left = (x*100)+'%';
+    clipX.constant = 2.3 - x*4.4;
+    clipZ.constant = 2.3 - x*4.4;
+    setClip(true);
+  }
+  track.addEventListener('pointerdown', function(e){ drag=true; setFrom(e); });
+  track.addEventListener('pointermove', function(e){ if (drag) setFrom(e); });
+  window.addEventListener('pointerup', function(){ drag=false; });
+  track.addEventListener('dblclick', function(){ knob.style.left='100%'; clipX.constant=2.3; clipZ.constant=2.3; setClip(false); });
+  setClip(true);
+})();
+
+/* ---------------- 工具栏 ---------------- */
+var spin = false;
+document.getElementById('b-spin').onclick = function(){ spin=!spin; this.classList.toggle('on', spin); };
+document.getElementById('b-lab').onclick  = function(){ labelsOn=!labelsOn; this.classList.toggle('on', labelsOn); syncLabels(); };
+document.getElementById('b-zoom').onclick = function(){
+  if (!selected){ alert('请先点选一个结构'); return; }
+  isolate = !isolate; this.classList.toggle('on', isolate);
+  if (isolate){ for (var k in parts) parts[k].visible = (k===selected); }
+  else { for (var k2 in parts){ parts[k2].visible = true; setDim(parts[k2], k2!==selected); } }
+  var info = focus(selected);
+  goal.target.copy(info.center); goal.dist = clamp(info.radius*4.6+2.2, 4.6, 13);
+  updateHead();
+};
+document.getElementById('b-reset').onclick = function(){
+  isolate=false; document.getElementById('b-zoom').classList.remove('on');
+  for (var k in parts){ parts[k].visible=true; setDim(parts[k], false); }
+  goal.theta=0.82; goal.phi=0.98; goal.dist=10.4; goal.target.set(0,0.15,0);
+  if (selected){ setGlow(parts[selected], false); parts[selected].scale.setScalar(1); }
+  selected=null; renderPanel(null); renderList(); updateHead(); syncLabels();
+};
+document.getElementById('b-shot').onclick = function(){
+  var a = document.createElement('a');
+  a.href = renderer.domElement.toDataURL('image/png');
+  a.download = 'plant-cell.png'; a.click();
+};
+document.addEventListener('keydown', function(e){
+  var k = e.key.toLowerCase();
+  if (k==='r') document.getElementById('b-reset').click();
+  if (k==='l') document.getElementById('b-lab').click();
+  if (k==='s') document.getElementById('b-shot').click();
+  if (e.key==='Escape'){
+    for (var kk in parts){ setGlow(parts[kk],false); setDim(parts[kk],false); parts[kk].visible=true; parts[kk].scale.setScalar(1); }
+    selected=null; isolate=false; document.getElementById('b-zoom').classList.remove('on');
+    renderPanel(null); renderList(); updateHead(); syncLabels();
+  }
+});
+
+/* ---------------- 主循环 ---------------- */
+var clock = new THREE.Clock(), frames=0, acc=0;
+function resize(){
+  var w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+function tick(){
+  requestAnimationFrame(tick);
+  var dt = Math.min(clock.getDelta(), 0.05);
+  if (spin) goal.theta += dt*0.22;
+  updateCamera(dt);
+  if (selected && parts[selected]){
+    parts[selected].scale.setScalar(1.06 + Math.sin(performance.now()*0.0028)*0.012);
+  }
+  renderer.render(scene, camera);
+  updateLabels();
+  frames++; acc += dt;
+  if (acc > 0.5){ document.getElementById('fps').textContent = Math.round(frames/acc)+' FPS'; frames=0; acc=0; }
+}
+renderList(); renderPanel(null); updateHead(); syncLabels(); tick();
+window.__cell = { scene:scene, camera:camera, parts:parts, select:select, goal:goal, focus:focus };
+</script>
+</body>
+</html>
